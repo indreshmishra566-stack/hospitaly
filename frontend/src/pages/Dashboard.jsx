@@ -1,47 +1,62 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-export default function Dashboard(){
-  const [rows, setRows] = useState([]);
-  const [user, setUser] = useState(null);
+const API = import.meta.env.VITE_API_URL || "http://localhost:10000";
 
-  function logout(){ localStorage.clear(); window.location.href = "/login"; }
+export default function Dashboard() {
+  const [vitals, setVitals] = useState([]);
+  const [error, setError] = useState("");
 
-  useEffect(()=>{
-    const u = localStorage.getItem("user"); if(u) setUser(JSON.parse(u));
-    const token = localStorage.getItem("token");
-    axios.get(`${API}/api/vitals`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(res=> setRows(res.data.data))
-      .catch(()=> setRows([]));
-  },[]);
+  const token = localStorage.getItem("token");
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const { data } = await axios.get(`${API}/api/vitals`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setVitals(data.vitals || []);
+      } catch (e) {
+        setError(e?.response?.data?.error || "Failed to fetch vitals");
+      }
+    })();
+  }, [token]);
+
+  const logout = () => {
+    localStorage.removeItem("token");
+    window.location.href = "/";
+  };
 
   return (
-    <div className="container">
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-        <h1>Smart Hospital Dashboard</h1>
-        <button className="btn" onClick={logout}>Logout</button>
-      </div>
-      <div className="card" style={{marginTop:8}}>
-        {user ? <b>Welcome, {user.name} ({user.role})</b> : null}
-        <div>Backend: <code>{API}</code></div>
-      </div>
-
-      <table className="table">
-        <thead><tr><th>Patient</th><th>Heart Rate</th><th>SpO₂</th><th>Temp (°F)</th><th>Recorded</th></tr></thead>
-        <tbody>
-          {rows.map(r=>(
-            <tr key={r._id}>
-              <td>{r.patientName}</td>
-              <td>{r.heartRate}</td>
-              <td>{r.spo2}</td>
-              <td>{r.temperature.toFixed ? r.temperature.toFixed(1) : r.temperature}</td>
-              <td>{new Date(r.recordedAt).toLocaleString()}</td>
-            </tr>
+    <div className="wrapper">
+      <div className="card">
+        <div className="row">
+          <h2>Patient Vitals</h2>
+          <button className="link" onClick={logout}>Logout</button>
+        </div>
+        {error && <div className="error">{error}</div>}
+        <div className="table">
+          <div className="tr head">
+            <div>Patient</div>
+            <div>HR</div>
+            <div>BP</div>
+            <div>SPO₂</div>
+            <div>Temp (°F)</div>
+            <div>Time</div>
+          </div>
+          {vitals.map((v) => (
+            <div key={v._id} className="tr">
+              <div>{v.patientName}</div>
+              <div>{v.heartRate}</div>
+              <div>{v.bpSystolic}/{v.bpDiastolic}</div>
+              <div>{v.spo2}</div>
+              <div>{v.temperature.toFixed(1)}</div>
+              <div>{new Date(v.createdAt).toLocaleString()}</div>
+            </div>
           ))}
-          {rows.length===0 && <tr><td colSpan="5">No data yet. Make sure seed ran & VITE_API_URL points to backend.</td></tr>}
-        </tbody>
-      </table>
+          {!vitals.length && <div className="muted">No data yet</div>}
+        </div>
+      </div>
     </div>
   );
 }
