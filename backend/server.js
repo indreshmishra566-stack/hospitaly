@@ -1,24 +1,39 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
-import './config/db.js';
-import authRoutes from './routes/authRoutes.js';
-import { authRequired } from './middleware/auth.js';
-import Vital from './models/Vital.js';
+import express from "express";
+import cors from "cors";
+import dotenv from "dotenv";
+import { connectDB } from "./config/db.js";
+import authRoutes from "./routes/authRoutes.js";
+import { auth } from "./middleware/auth.js";
+import Vital from "./models/Vital.js";
 
 dotenv.config();
-const app = express();
-const PORT = process.env.PORT || 5000;
 
-app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') || '*'}));
+const app = express();
+
+// CORS – allow frontend URL or *
+app.use(
+  cors({
+    origin: process.env.CORS_ORIGIN?.split(",") || "*",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
-app.get('/health', (req,res)=> res.json({status:'ok'}));
-app.use('/api/auth', authRoutes);
+// Health check
+app.get("/health", (req, res) => res.json({ status: "ok" }));
 
-app.get('/api/vitals', authRequired, async (req,res)=>{
-  const vitals = await Vital.find().sort({ recordedAt: -1 }).limit(20);
-  res.json({ data: vitals });
+// Auth
+app.use("/api/auth", authRoutes);
+
+// Protected vitals list
+app.get("/api/vitals", auth, async (req, res) => {
+  const vitals = await Vital.find().sort({ createdAt: -1 }).limit(10);
+  res.json({ vitals });
 });
 
-app.listen(PORT, ()=> console.log(`Server listening on ${PORT}`));
+// Start
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, async () => {
+  await connectDB();
+  console.log(`Server running on port ${PORT}`);
+});
