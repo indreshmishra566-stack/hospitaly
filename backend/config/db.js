@@ -1,7 +1,17 @@
-import mongoose from 'mongoose';
-import dotenv from 'dotenv'; dotenv.config();
-const uri = process.env.MONGO_URI;
-if(!uri){ console.error('Missing MONGO_URI'); process.exit(1); }
-mongoose.connect(uri).then(()=> console.log('MongoDB connected')).catch(err=>{
-  console.error('Mongo error', err.message); process.exit(1);
-});
+import mongoose from "mongoose";
+
+export async function connectDB() {
+  if (!process.env.MONGO_URI) {
+    console.error("Missing MONGO_URI in env");
+    process.exit(1);
+  }
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      dbName: "hospitaly"
+    });
+    console.log("MongoDB Connected ✅");
+  } catch (e) {
+    console.error("MongoDB Connection Failed ❌", e.message);
+    process.exit(1);
+  }
+}
